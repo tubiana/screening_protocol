@@ -309,7 +309,7 @@ if len(energies) == len(ligands):
         }
     results = pd.DataFrame.from_dict(d)
     results = results.sort_values("Best Energy (kcal/mol)")
-    results.to_csv("results.csv")
+    results.to_csv("results_from_logfile.csv", sep=";")
 
 else:
     print("mismatch in len)")
@@ -342,6 +342,7 @@ results = pd.DataFrame.from_dict(
         "energyAve":energiesAve,
     }
 )
+results.to_csv("results_from_xml.csv", sep=";")
 
 
 ```

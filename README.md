@@ -91,20 +91,9 @@ Example :
 Autodock take only pdbqt format as input.  You have to convert the sdf into pdbqt.  
 2 possibilities:
 
-### Using BABEL
-
-For that, you can use `openbabel` to convert it. Openbabel can convert almost everything, even generate 3D format, filter, compute some properties etc....  
-During the conversion, I would add the gasteiger charges as well...
-
-**NOTE: DON'T FORGET TO ADD `-xh` TO CONSERVE HYDROGENS... OTHERWISE THEY WILL BE REMOVED. IT'S NOT WHAT YOU WANT**
-
-```bash
-obabel -isdf molecules_1-10.sdf -opdbqt -O molecules_1-10.pdbqt --partialcharge gasteiger
-```
-(if you don't have openbabel installed you can install it with `conda install -c bioconda -c conda-forge openbabel` or `sudo apt install openbabel`)
 
 
-### Using MEEKO (Better ?)
+### Using MEEKO (Better (YES))
 Meeko is a soft that generate pdbqt from SDF and can generate a SDF from PDBQT.
 
 ```bash
@@ -114,9 +103,20 @@ pip install prody meeko
 
 Then Conversion to PDBQT
 ```bash
-mk_prepare_ligand.py -i MOLECULES.sdf --multimol_outdir OUTPUTFOLDER
+mk_prepare_ligand.py -i MOLECULES.sdf --rigid_macrocycles --multimol_outdir OUTPUTFOLDER
 ```
 
+**NB: Keep `--rigid_macrocycles` for autodock-GPU since autodockGPU doesn't handle flexible macrocycle (but newest version of autodock-VINA does!)**
+
+### (OPTIONAL) Using BABEL
+
+For that, you can use `openbabel` to convert it. Openbabel can convert almost everything, even generate 3D format, filter, compute some properties etc....  
+During the conversion, I would add the gasteiger charges as well...
+
+```bash
+obabel -isdf molecules_1-10.sdf -opdbqt -O molecules_1-10.pdbqt --partialcharge gasteiger
+```
+(if you don't have openbabel installed you can install it with `conda install -c bioconda -c conda-forge openbabel` or `sudo apt install openbabel`)
 
 
 
@@ -137,7 +137,7 @@ You can use the default options for now (I like to tick the option to keep the c
 
 
 ## 4. Pocket idenditication (optional)
-To identify the pocket, the best option (I think) is to use fpocket (https://bioserv.rpbs.univ-paris-diderot.fr/services/fpocket/).   
+To identify the pocket, the best option (I think) is to use fpocket (https://bioserv.rpbs.univ-paris-diderot.fr/services/fpocket/ or https://durrantlab.pitt.edu/fpocketweb/).   
 Per default, you can submit a pdb file and look at the possible pocket. There is a druguability score from 0 to 1 that can be used to find hypothetical droguable pockets.
 
 
@@ -148,7 +148,7 @@ The next step is to prepare the docking grid. There is two option :
 
 In either case, you can prepare it with autodock tools (inside the `mgltools` environment. You can activate it with `conda activate mgltools` and then run adt with `adt` command)
 
-1. In the grid menu go to `Macromolecule > Open Macromolecule` and load your pqr file (in filter, choose `all files` if it is in pqr format instead of pdbqt)
+1. In the `grid` menu go to `Macromolecule > Open Macromolecule` and load your pqr file (in filter, choose `all files` if it is in pqr format instead of pdbqt)
 2. Usually, autodock works great with gasteiger charges. Say "yes" when adt ask if you want to add gasteiger charges.
 3. Let AutodockTools prepare the protein (ie, calculate the gasteiger charges + Merging non-polar hydrogens) and **save the protein in pdbqt format**
 4. Set the maps type :  
@@ -230,7 +230,7 @@ BOX:
   - Y: 27.639
   - Z: -3.667
 
-## Define the number of atoms in all pdbpyqt
+## Get all different atoms type in all pdbqt
 If use this code to read all ligand file, get the `ATOM` lines and check the `ATOMTYPE` column.  
 This is needed to know which atom type are present to prepare the grid for the screening.
 
@@ -240,15 +240,14 @@ CHECK ALL ATOMTYPES : `./input/7cpa/derived/AD4.1_bound.dat`
 If you want to update this list with your ligand list, use this bellow.
 
 ```python
-import pandas as pd
 import glob
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import numpy as np
 
-os.chdir("/home/thibault/work/projects/other/Sylvie/new_test/molecules")
 filelist = glob.glob("./*.pdbqt")
 
 atom=[]
+errors = []
 for file in tqdm(filelist):
     with open(file,"r") as filin:
         lines = filin.readlines()
@@ -256,11 +255,15 @@ for file in tqdm(filelist):
             try:
                 if line.startswith("ATOM"):
                     atomType= line[77:80].strip()
+                    if atomType in ["CG0","CG1","G0","G1"]:
+                        errors.append(file)
                     atom.append(atomType)
             except:
                 pass
 
 print (np.unique(np.asarray(atom)))
+print (np.unique(np.asarray(errors)))
+
 ```
 
 # DLG TO PDBQT
